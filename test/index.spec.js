@@ -54,8 +54,11 @@ describe("without mitm", () => {
 describe("with mitm", () => {
   let interceptor;
 
-  beforeEach(() => {
+  before(() => {
     interceptor = new Interceptor();
+  });
+
+  beforeEach(() => {
     interceptor.enable();
   });
 
