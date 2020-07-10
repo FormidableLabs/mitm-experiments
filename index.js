@@ -9,7 +9,14 @@ const uuid = require("uuid");
 const debug = require("debug")("mitm-exp");
 
 const YESNO_INTERNAL_HTTP_HEADER = "x-yesno-internal-header-id";
+
+// We need console output delayed as it prevents seeing the issue.
 const DEBUG_DELAY = 1000;
+const debugLater = (...args) => {
+  setTimeout(() => {
+    debug(...args);
+  }, DEBUG_DELAY);
+};
 
 class DebugTransform extends Transform {
   constructor({ id }) {
@@ -17,9 +24,7 @@ class DebugTransform extends Transform {
     this.id = id;
   }
   _transform(chunk, encoding, callback) {
-    setTimeout((data) => {
-      debug(`DebugTransform: ${this.id}`, data);
-    }, DEBUG_DELAY, chunk.toString());
+    debugLater(`DebugTransform: ${this.id}`, chunk.toString());
     callback(null, chunk);
   }
 }
@@ -109,7 +114,7 @@ class Interceptor {
     proxiedRequest.on("error", (e) => debug("Proxied request error", e));
     proxiedRequest.on("aborted", () => debug("Proxied request aborted"));
     proxiedRequest.on("response", (proxiedResponse) => {
-      debug("proxied response (%d)", proxiedResponse.statusCode);
+      debugLater("proxied response (%d)", proxiedResponse.statusCode);
       if (proxiedResponse.statusCode) {
         interceptedResponse.writeHead(proxiedResponse.statusCode, proxiedResponse.headers);
       }
@@ -126,7 +131,7 @@ class Interceptor {
       interceptedRequest,
       new DebugTransform({ id: "request" }),
       proxiedRequest,
-      (err) => debug(`Request pipeline ${err ? "failed" : "passed"}`, err || "")
+      (err) => debugLater(`Request pipeline ${err ? "failed" : "passed"}`, err || "")
     );
   }
 }
