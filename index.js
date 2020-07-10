@@ -9,6 +9,7 @@ const uuid = require("uuid");
 const debug = require("debug")("mitm-exp");
 
 const YESNO_INTERNAL_HTTP_HEADER = "x-yesno-internal-header-id";
+const DEBUG_DELAY = 1000;
 
 class DebugTransform extends Transform {
   constructor({ id }) {
@@ -17,8 +18,8 @@ class DebugTransform extends Transform {
   }
   _transform(chunk, encoding, callback) {
     setTimeout((data) => {
-      console.log("TODO debugTransform", this.id, { data })
-    }, 1000, chunk.toString())
+      debug(`DebugTransform: ${this.id}`, data);
+    }, DEBUG_DELAY, chunk.toString());
     callback(null, chunk);
   }
 }
@@ -60,7 +61,7 @@ class Interceptor {
 
   mitmOnConnect(socket, clientOptions) {
     // Short-circuit: passthrough real requests.
-    if (clientOptions.proxying) { return socket.bypass(); }
+    if (clientOptions.proxying) { return void socket.bypass(); }
 
     // Mutate socket and track options for later proxying.
     socket.__yesno_req_id = uuid.v4();
@@ -113,23 +114,11 @@ class Interceptor {
         interceptedResponse.writeHead(proxiedResponse.statusCode, proxiedResponse.headers);
       }
 
-      // TODO: REMOVE?
-      proxiedResponse.on("end", () => {
-        console.log("TODO proxiedResponse END");
-      });
-
       pipeline(
         proxiedResponse,
         new DebugTransform({ id: "response" }),
         interceptedResponse,
-        // TODO: REMOVE?
-        (err) => {
-          if (err) {
-            console.error("TODO: Response pipeline failed.", err);
-          } else {
-            console.log("TODO: Response pipeline succeeded.");
-          }
-        }
+        (err) => debug(`Response pipeline ${err ? "failed" : "passed"}`, err || "")
       );
     });
 
@@ -137,14 +126,7 @@ class Interceptor {
       interceptedRequest,
       new DebugTransform({ id: "request" }),
       proxiedRequest,
-      // TODO: REMOVE?
-      (err) => {
-        if (err) {
-          console.error("TODO: Request pipeline failed.", err);
-        } else {
-          console.log("TODO: Request pipeline succeeded.");
-        }
-      }
+      (err) => debug(`Request pipeline ${err ? "failed" : "passed"}`, err || "")
     );
   }
 }

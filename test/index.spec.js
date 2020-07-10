@@ -2,6 +2,7 @@
 
 const https = require("https");
 const { Interceptor } = require("../index");
+const debug = require("debug")("mitm-exp:test");
 
 const { expect } = require("chai");
 
@@ -27,14 +28,10 @@ const httpsPost = () => new Promise((resolve, reject) => {
   }, (res) => {
     let data = "";
     res.on("data", (d) => {
-      console.log("TODO RES DATA", d.toString());
+      debug("httpsPost data: ", d.toString());
       data += d.toString();
     });
-    res.on("pipe", () => {
-      console.log("TODO RES PIPE");
-    });
     res.on("end", () => {
-      console.log("TODO RES END", data);
       resolve(JSON.parse(data));
     });
   });
