@@ -5,6 +5,9 @@
   "main": "index.js",
   "author": "Ryan Roemer <ryan.roemer@formidable.com>",
   "license": "MIT",
+  "scripts": {
+    "test": "mocha"
+  },
   "dependencies": {
     "mitm": "^1.7.1"
   },
