@@ -2,7 +2,7 @@
 
 const http = require("http");
 const https = require("https");
-const { pipeline } = require("stream");
+const { Transform, pipeline } = require("stream");
 
 const Mitm = require("mitm");
 const uuid = require("uuid");
@@ -10,43 +10,18 @@ const debug = require("debug")("mitm-exp");
 
 const YESNO_INTERNAL_HTTP_HEADER = "x-yesno-internal-header-id";
 
-// TODO REMOVE
-// // A vanilla request library.
-// const realRequest = ({ isHttps, options }) => new Promise((resolve, reject) => {
-//   const request = isHttps ? https : http;
-//   const req = request({
-//     ...options,
-//     // Add in headers, omitting our special one.
-//     headers: Object
-//       .entries({
-//         "Content-Length": data ? Buffer.byteLength(data) : 0,
-//         ...options.headers
-//       })
-//       .filter(([k]) => k !== YESNO_INTERNAL_HTTP_HEADER)
-//       .reduce((m, [k, v]) => Object.assign(m, { [k]: v })),
-//     // Skip MITM to do a _real_ request.
-//     proxying: true
-//   }, (res) => {
-//     let resData;
-//     res.on("data", (d) => {
-//       console.log("TODO RES DATA", d.toString());
-//       resData += d.toString();
-//     });
-//     res.on("pipe", () => {
-//       console.log("TODO RES PIPE");
-//     });
-//     res.on("end", () => {
-//       console.log("TODO RES END", resData);
-//       resolve(resData);
-//     });
-//   });
-
-//   req.on("error", reject);
-//   if (data) {
-//     req.write(data);
-//   }
-//   req.end();
-// });
+class DebugTransform extends Transform {
+  constructor({ id }) {
+    super();
+    this.id = id;
+  }
+  _transform(chunk, encoding, callback) {
+    setTimeout((data) => {
+      console.log("TODO debugTransform", this.id, { data })
+    }, 1000, chunk.toString())
+    callback(null, chunk);
+  }
+}
 
 class Interceptor {
   constructor() {
@@ -117,7 +92,7 @@ class Interceptor {
       headers: Object
         .entries(clientOptions.headers)
         .filter(([k]) => k !== YESNO_INTERNAL_HTTP_HEADER)
-        .reduce((m, [k, v]) => Object.assign(m, { [k]: v })),
+        .reduce((m, [k, v]) => Object.assign(m, { [k]: v }), {}),
       // Skip MITM to do a _real_ request.
       proxying: true
     });
@@ -143,7 +118,10 @@ class Interceptor {
         console.log("TODO proxiedResponse END");
       });
 
-      pipeline(proxiedResponse, interceptedResponse,
+      pipeline(
+        proxiedResponse,
+        new DebugTransform({ id: "response" }),
+        interceptedResponse,
         // TODO: REMOVE?
         (err) => {
           if (err) {
@@ -155,7 +133,10 @@ class Interceptor {
       );
     });
 
-    pipeline(interceptedRequest, proxiedRequest,
+    pipeline(
+      interceptedRequest,
+      new DebugTransform({ id: "request" }),
+      proxiedRequest,
       // TODO: REMOVE?
       (err) => {
         if (err) {
